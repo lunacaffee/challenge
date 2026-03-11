@@ -453,14 +453,15 @@
 
     <script>
         // ================== إعداد Firebase (تم إدخال بياناتك) ==================
-        const firebaseConfig = {
-            apiKey: "AIzaSyCiGm7HSmsWN3q1zQE6XUosHtsswAU1ENQ",
-            authDomain: "laithchallenge.firebaseapp.com",
-            projectId: "laithchallenge",
-            storageBucket: "laithchallenge.firebasestorage.app",
-            messagingSenderId: "1053045615209",
-            appId: "1:1053045615209:web:45a3c035d04ce75c5a90f8"
-        };
+      const firebaseConfig = {
+  apiKey: "AIzaSyCiGm7HSmsWN3q1zQE6XUosHtsswAU1ENQ",
+  authDomain: "laithchallenge.firebaseapp.com",
+  databaseURL: "https://laithchallenge-default-rtdb.asia-southeast1.firebasedatabase.app", // أضف هذا السطر
+  projectId: "laithchallenge",
+  storageBucket: "laithchallenge.firebasestorage.app",
+  messagingSenderId: "1053045615209",
+  appId: "1:1053045615209:web:45a3c035d04ce75c5a90f8"
+};
 
         // تهيئة Firebase
         firebase.initializeApp(firebaseConfig);
