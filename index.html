@@ -8,9 +8,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Google Fonts: Cairo -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Gun.js (النسخة المستقرة) -->
-    <script src="https://cdn.jsdelivr.net/npm/gun@0.2020.520/gun.min.js"></script>
+    <!-- Firebase SDK (8.x) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
+        /* التصميم الإسلامي العصري (كما هو سابق) */
         * {
             margin: 0;
             padding: 0;
@@ -370,6 +372,7 @@
 </head>
 <body>
     <div class="container" id="appContainer">
+        <!-- رأس ثابت -->
         <div class="app-header">
             <h1><i class="fas fa-mosque"></i> تحدي الاستغفار <i class="fas fa-star-and-crescent"></i></h1>
             <p>غرفة تنافس في ذكر الله</p>
@@ -417,7 +420,7 @@
             <button class="btn-primary" id="startChallengeBtn" style="margin-top:1.5rem;"><i class="fas fa-play"></i> بدء التحدي (15 دقيقة)</button>
         </div>
 
-        <!-- قسم التحدي -->
+        <!-- قسم التحدي (العد والمسبحة) -->
         <div id="challengeSection" class="section hidden">
             <div class="timer-box">
                 <div class="timer" id="timerDisplay">15:00</div>
@@ -432,7 +435,7 @@
             </div>
         </div>
 
-        <!-- قسم النتيجة -->
+        <!-- قسم النتيجة (الفائز) -->
         <div id="winnerSection" class="section hidden">
             <div class="winner-box">
                 <div class="winner-trophy"><i class="fas fa-crown"></i></div>
@@ -449,10 +452,19 @@
     </div>
 
     <script>
-        // ================== تهيئة Gun ==================
-        const gun = Gun({ 
-            peers: ['https://gun-manhattan.herokuapp.com/gun'] // خادم ترحيل عام
-        });
+        // ================== إعداد Firebase (تم إدخال بياناتك) ==================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCiGm7HSmsWN3q1zQE6XUosHtsswAU1ENQ",
+            authDomain: "laithchallenge.firebaseapp.com",
+            projectId: "laithchallenge",
+            storageBucket: "laithchallenge.firebasestorage.app",
+            messagingSenderId: "1053045615209",
+            appId: "1:1053045615209:web:45a3c035d04ce75c5a90f8"
+        };
+
+        // تهيئة Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
         // ================== عناصر DOM ==================
         const joinCreateSection = document.getElementById('joinCreateSection');
@@ -478,12 +490,11 @@
         const newChallengeBtn = document.getElementById('newChallengeBtn');
 
         // ================== متغيرات الحالة ==================
-        let currentRoomId = null;
-        let currentPlayerId = null;
-        let currentPlayerName = null;
-        let roomNode = null;         // عقدة Gun للغرفة الحالية
-        let unsubscribe = null;      // دالة إلغاء الاستماع
-        let countdownInterval = null;
+        let currentRoomId = null;          // معرف الغرفة الحالية
+        let currentPlayerId = null;         // معرف المستخدم (فريد)
+        let currentPlayerName = null;        // اسم المستخدم
+        let roomRef = null;                  // Reference للغرفة في Firebase
+        let countdownInterval = null;         // مؤقت العد التنازلي
 
         // ================== دوال مساعدة ==================
         function generateId() {
@@ -499,7 +510,6 @@
 
         function renderPlayers(players, withCount = false) {
             if (!players) return '';
-            // تحويل الكائن إلى مصفوفة وترتيب حسب الاسم
             const entries = Object.entries(players).map(([id, p]) => ({ id, ...p }));
             entries.sort((a,b) => a.name.localeCompare(b.name));
             return entries.map(p => `
@@ -510,7 +520,64 @@
             `).join('');
         }
 
-        // تحديث عداد الوقت
+        // بدء الاستماع للتغييرات في الغرفة
+        function listenToRoom(roomId) {
+            if (roomRef) roomRef.off(); // إلغاء الاستماع السابق
+            roomRef = database.ref(`rooms/${roomId}`);
+            roomRef.on('value', (snapshot) => {
+                const roomData = snapshot.val();
+                if (!roomData) {
+                    alert('الغرفة غير موجودة');
+                    resetToJoinScreen();
+                    return;
+                }
+
+                // تحديث واجهة المستخدم حسب حالة الغرفة
+                if (roomData.status === 'waiting') {
+                    hideAllSections();
+                    roomSection.classList.remove('hidden');
+                    playersList.innerHTML = renderPlayers(roomData.players, false);
+                    roomIdDisplay.innerText = roomId;
+                    const link = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+                    roomLinkDisplay.innerText = link;
+
+                    if (roomData.hostId === currentPlayerId && Object.keys(roomData.players).length >= roomData.maxPlayers) {
+                        startChallengeBtn.disabled = false;
+                    } else {
+                        startChallengeBtn.disabled = true;
+                    }
+                }
+                else if (roomData.status === 'started') {
+                    hideAllSections();
+                    challengeSection.classList.remove('hidden');
+                    challengePlayersList.innerHTML = renderPlayers(roomData.players, true);
+                    if (currentPlayerId && roomData.players[currentPlayerId]) {
+                        myCounter.innerText = roomData.players[currentPlayerId].count || 0;
+                    }
+                    if (roomData.startTime) {
+                        const endTime = roomData.startTime + 15 * 60 * 1000;
+                        updateTimer(endTime);
+                        if (countdownInterval) clearInterval(countdownInterval);
+                        countdownInterval = setInterval(() => updateTimer(endTime), 500);
+                    }
+                }
+                else if (roomData.status === 'finished') {
+                    hideAllSections();
+                    winnerSection.classList.remove('hidden');
+                    let winner = { name: 'لا يوجد', count: 0 };
+                    if (roomData.players) {
+                        const players = Object.values(roomData.players);
+                        if (players.length) {
+                            winner = players.reduce((max, p) => (p.count > max.count ? p : max), players[0]);
+                        }
+                    }
+                    winnerName.innerText = winner.name;
+                    winnerCount.innerText = winner.count || 0;
+                    if (countdownInterval) clearInterval(countdownInterval);
+                }
+            });
+        }
+
         function updateTimer(endTime) {
             const now = Date.now();
             const diff = endTime - now;
@@ -523,74 +590,8 @@
             timerDisplay.innerText = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
         }
 
-        // بدء الاستماع لغرفة معينة
-        function listenToRoom(roomId) {
-            if (unsubscribe) unsubscribe(); // إلغاء الاستماع السابق
-            
-            roomNode = gun.get('rooms').get(roomId);
-            
-            // الاستماع للتغييرات
-            const onData = (data, key) => {
-                if (!data) return; // لا توجد غرفة
-                
-                // التأكد من وجود players ككائن
-                if (!data.players) data.players = {};
-
-                // تحديث واجهة المستخدم حسب حالة الغرفة
-                if (data.status === 'waiting') {
-                    hideAllSections();
-                    roomSection.classList.remove('hidden');
-                    playersList.innerHTML = renderPlayers(data.players, false);
-                    roomIdDisplay.innerText = roomId;
-                    const link = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
-                    roomLinkDisplay.innerText = link;
-
-                    // تمكين زر البدء للمضيف إذا اكتمل العدد
-                    if (data.hostId === currentPlayerId && Object.keys(data.players).length >= data.maxPlayers) {
-                        startChallengeBtn.disabled = false;
-                    } else {
-                        startChallengeBtn.disabled = true;
-                    }
-                }
-                else if (data.status === 'started') {
-                    hideAllSections();
-                    challengeSection.classList.remove('hidden');
-                    challengePlayersList.innerHTML = renderPlayers(data.players, true);
-                    if (currentPlayerId && data.players[currentPlayerId]) {
-                        myCounter.innerText = data.players[currentPlayerId].count || 0;
-                    }
-
-                    if (data.startTime) {
-                        const endTime = data.startTime + 15 * 60 * 1000;
-                        updateTimer(endTime);
-                        if (countdownInterval) clearInterval(countdownInterval);
-                        countdownInterval = setInterval(() => updateTimer(endTime), 500);
-                    }
-                }
-                else if (data.status === 'finished') {
-                    hideAllSections();
-                    winnerSection.classList.remove('hidden');
-                    let winner = { name: 'لا يوجد', count: 0 };
-                    if (data.players) {
-                        const players = Object.values(data.players);
-                        if (players.length) {
-                            winner = players.reduce((max, p) => (p.count > max.count ? p : max), players[0]);
-                        }
-                    }
-                    winnerName.innerText = winner.name;
-                    winnerCount.innerText = winner.count || 0;
-                    if (countdownInterval) clearInterval(countdownInterval);
-                }
-            };
-
-            roomNode.on(onData);
-            // حفظ دالة الإلغاء (Gun لا توفر off مباشرة، نستخدم unbind)
-            unsubscribe = () => roomNode.off();
-        }
-
-        // العودة للشاشة الرئيسية
         function resetToJoinScreen() {
-            if (unsubscribe) unsubscribe();
+            if (roomRef) roomRef.off();
             if (countdownInterval) clearInterval(countdownInterval);
             currentRoomId = null;
             currentPlayerId = null;
@@ -618,13 +619,15 @@
                 createdAt: Date.now()
             };
 
-            // حفظ الغرفة في Gun
-            gun.get('rooms').get(roomId).put(roomData);
-
-            currentRoomId = roomId;
-            currentPlayerId = playerId;
-            currentPlayerName = playerName;
-            listenToRoom(roomId);
+            try {
+                await database.ref(`rooms/${roomId}`).set(roomData);
+                currentRoomId = roomId;
+                currentPlayerId = playerId;
+                currentPlayerName = playerName;
+                listenToRoom(roomId);
+            } catch (error) {
+                alert('خطأ في الاتصال: ' + error.message);
+            }
         });
 
         joinRoomBtn.addEventListener('click', async () => {
@@ -635,30 +638,27 @@
                 const url = new URL(link);
                 roomId = url.searchParams.get('room');
             } catch (e) {
-                roomId = link; // إذا كان مجرد كود
+                roomId = link;
             }
             if (!roomId) return alert('لم نتمكن من العثور على معرف الغرفة');
 
             const playerName = playerNameInput.value.trim();
             if (!playerName) return alert('الرجاء إدخال اسمك');
 
-            // جلب الغرفة من Gun
-            gun.get('rooms').get(roomId).once((data) => {
-                if (!data) return alert('الغرفة غير موجودة');
-                if (data.status !== 'waiting') return alert('التحدي بدأ بالفعل أو انتهى');
-                if (Object.keys(data.players).length >= data.maxPlayers) return alert('الغرفة ممتلئة');
+            const snapshot = await database.ref(`rooms/${roomId}`).once('value');
+            const room = snapshot.val();
+            if (!room) return alert('الغرفة غير موجودة');
+            if (room.status !== 'waiting') return alert('التحدي بدأ بالفعل أو انتهى');
+            if (Object.keys(room.players).length >= room.maxPlayers) return alert('الغرفة ممتلئة');
 
-                const playerId = generateId() + '_' + Date.now();
-                data.players[playerId] = { name: playerName, count: 0 };
+            const playerId = generateId() + '_' + Date.now();
+            room.players[playerId] = { name: playerName, count: 0 };
+            await database.ref(`rooms/${roomId}/players`).set(room.players);
 
-                // تحديث الغرفة
-                gun.get('rooms').get(roomId).put({ players: data.players });
-
-                currentRoomId = roomId;
-                currentPlayerId = playerId;
-                currentPlayerName = playerName;
-                listenToRoom(roomId);
-            });
+            currentRoomId = roomId;
+            currentPlayerId = playerId;
+            currentPlayerName = playerName;
+            listenToRoom(roomId);
         });
 
         copyLinkBtn.addEventListener('click', () => {
@@ -667,24 +667,24 @@
             }
         });
 
-        startChallengeBtn.addEventListener('click', () => {
+        startChallengeBtn.addEventListener('click', async () => {
             if (!currentRoomId || !currentPlayerId) return;
-            gun.get('rooms').get(currentRoomId).once((data) => {
-                if (!data || data.hostId !== currentPlayerId) return alert('أنت لست مضيف الغرفة');
-                if (Object.keys(data.players).length < data.maxPlayers) return alert('لم يكتمل العدد بعد');
-                gun.get('rooms').get(currentRoomId).put({
-                    status: 'started',
-                    startTime: Date.now()
-                });
+            const snapshot = await database.ref(`rooms/${currentRoomId}`).once('value');
+            const room = snapshot.val();
+            if (!room || room.hostId !== currentPlayerId) return alert('أنت لست مضيف الغرفة');
+            if (Object.keys(room.players).length < room.maxPlayers) return alert('لم يكتمل العدد بعد');
+            await database.ref(`rooms/${currentRoomId}`).update({
+                status: 'started',
+                startTime: Date.now()
             });
         });
 
-        tasbihButton.addEventListener('click', () => {
+        tasbihButton.addEventListener('click', async () => {
             if (!currentRoomId || !currentPlayerId) return;
-            // زيادة العداد
-            gun.get('rooms').get(currentRoomId).get('players').get(currentPlayerId).once((player) => {
-                const newCount = (player?.count || 0) + 1;
-                gun.get('rooms').get(currentRoomId).get('players').get(currentPlayerId).put({ count: newCount });
+            const snapshot = await database.ref(`rooms/${currentRoomId}/players/${currentPlayerId}/count`).once('value');
+            const currentCount = snapshot.val() || 0;
+            await database.ref(`rooms/${currentRoomId}/players/${currentPlayerId}`).update({
+                count: currentCount + 1
             });
         });
 
@@ -702,7 +702,7 @@
 
         // تنظيف
         window.addEventListener('beforeunload', () => {
-            if (unsubscribe) unsubscribe();
+            if (roomRef) roomRef.off();
         });
     </script>
 </body>
