@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        /* التصميم الإسلامي العصري (كما هو سابق) */
+        /* التصميم السابق مع إضافات لشاشة النتيجة */
         * {
             margin: 0;
             padding: 0;
@@ -322,26 +322,63 @@
             font-weight: 600;
         }
 
+        /* شاشة النتيجة المطوّرة */
         .winner-box {
             background: #1a5a4b;
             border-radius: 60px;
-            padding: 2.5rem;
+            padding: 2rem;
             text-align: center;
             border: 3px solid #d4af37;
             margin-top: 1.5rem;
         }
 
         .winner-name {
-            font-size: 3.5rem;
+            font-size: 3rem;
             font-weight: 800;
             color: #f7e7b4;
             text-shadow: 0 0 20px gold;
+            margin-bottom: 0.5rem;
         }
 
         .winner-trophy {
             font-size: 4rem;
             color: #d4af37;
             margin-bottom: 1rem;
+        }
+
+        .ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            color: #fff;
+            font-size: 1.2rem;
+        }
+
+        .ranking-table th {
+            background: #d4af37;
+            color: #0b3a2e;
+            padding: 0.7rem;
+            font-weight: 700;
+        }
+
+        .ranking-table td {
+            padding: 0.7rem;
+            border-bottom: 1px solid #d4af3740;
+        }
+
+        .ranking-table .current-user {
+            background: #2a6b58;
+            font-weight: 700;
+            color: #f7e7b4;
+        }
+
+        .message-user {
+            font-size: 1.5rem;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 60px;
+            background: #0d3329;
+            border: 1px solid #d4af37;
         }
 
         .footer {
@@ -435,13 +472,25 @@
             </div>
         </div>
 
-        <!-- قسم النتيجة (الفائز) -->
+        <!-- قسم النتيجة المطوّر (الفائز + الترتيب) -->
         <div id="winnerSection" class="section hidden">
             <div class="winner-box">
                 <div class="winner-trophy"><i class="fas fa-crown"></i></div>
-                <h2 style="color:#f7e7b4;">الفائز في التحدي</h2>
+                <h2 style="color:#f7e7b4;">انتهى التحدي!</h2>
                 <div class="winner-name" id="winnerName">---</div>
-                <p style="color:#b5d1c9; margin-top:1rem;">بعدد استغفارات <span id="winnerCount">0</span></p>
+                <p style="color:#b5d1c9;">بعدد استغفارات <span id="winnerCount">0</span></p>
+
+                <!-- جدول الترتيب -->
+                <table class="ranking-table" id="rankingTable">
+                    <thead>
+                        <tr><th>#</th><th>اللاعب</th><th>عدد الاستغفارات</th></tr>
+                    </thead>
+                    <tbody id="rankingBody"></tbody>
+                </table>
+
+                <!-- رسالة خاصة للمستخدم الحالي -->
+                <div class="message-user" id="userMessage"></div>
+
                 <button class="btn-secondary" id="newChallengeBtn" style="margin-top:2rem;"><i class="fas fa-redo-alt"></i> تحدٍ جديد</button>
             </div>
         </div>
@@ -452,16 +501,16 @@
     </div>
 
     <script>
-        // ================== إعداد Firebase (تم إدخال بياناتك) ==================
-      const firebaseConfig = {
-  apiKey: "AIzaSyCiGm7HSmsWN3q1zQE6XUosHtsswAU1ENQ",
-  authDomain: "laithchallenge.firebaseapp.com",
-  databaseURL: "https://laithchallenge-default-rtdb.asia-southeast1.firebasedatabase.app", // أضف هذا السطر
-  projectId: "laithchallenge",
-  storageBucket: "laithchallenge.firebasestorage.app",
-  messagingSenderId: "1053045615209",
-  appId: "1:1053045615209:web:45a3c035d04ce75c5a90f8"
-};
+        // ================== إعداد Firebase (باستخدام بياناتك) ==================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCiGm7HSmsWN3q1zQE6XUosHtsswAU1ENQ",
+            authDomain: "laithchallenge.firebaseapp.com",
+            databaseURL: "https://laithchallenge-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "laithchallenge",
+            storageBucket: "laithchallenge.firebasestorage.app",
+            messagingSenderId: "1053045615209",
+            appId: "1:1053045615209:web:45a3c035d04ce75c5a90f8"
+        };
 
         // تهيئة Firebase
         firebase.initializeApp(firebaseConfig);
@@ -488,14 +537,16 @@
         const myCounter = document.getElementById('myCounter');
         const winnerName = document.getElementById('winnerName');
         const winnerCount = document.getElementById('winnerCount');
+        const rankingBody = document.getElementById('rankingBody');
+        const userMessage = document.getElementById('userMessage');
         const newChallengeBtn = document.getElementById('newChallengeBtn');
 
         // ================== متغيرات الحالة ==================
-        let currentRoomId = null;          // معرف الغرفة الحالية
-        let currentPlayerId = null;         // معرف المستخدم (فريد)
-        let currentPlayerName = null;        // اسم المستخدم
-        let roomRef = null;                  // Reference للغرفة في Firebase
-        let countdownInterval = null;         // مؤقت العد التنازلي
+        let currentRoomId = null;
+        let currentPlayerId = null;
+        let currentPlayerName = null;
+        let roomRef = null;
+        let countdownInterval = null;
 
         // ================== دوال مساعدة ==================
         function generateId() {
@@ -509,6 +560,7 @@
             winnerSection.classList.add('hidden');
         }
 
+        // عرض قائمة اللاعبين (بسيطة)
         function renderPlayers(players, withCount = false) {
             if (!players) return '';
             const entries = Object.entries(players).map(([id, p]) => ({ id, ...p }));
@@ -521,9 +573,54 @@
             `).join('');
         }
 
+        // عرض شاشة النتيجة مع الترتيب والرسالة
+        function showWinnerScreen(roomData) {
+            hideAllSections();
+            winnerSection.classList.remove('hidden');
+
+            // استخراج قائمة اللاعبين وترتيبها تنازلياً حسب count
+            const playersArray = Object.entries(roomData.players).map(([id, p]) => ({ id, ...p }));
+            playersArray.sort((a, b) => (b.count || 0) - (a.count || 0));
+
+            // الفائز (أول عنصر)
+            const winner = playersArray[0] || { name: 'لا يوجد', count: 0 };
+            winnerName.innerText = winner.name;
+            winnerCount.innerText = winner.count || 0;
+
+            // بناء جدول الترتيب
+            let rankingHtml = '';
+            playersArray.forEach((player, index) => {
+                const isCurrent = player.id === currentPlayerId;
+                rankingHtml += `<tr class="${isCurrent ? 'current-user' : ''}">
+                    <td>${index + 1}</td>
+                    <td>${player.name} ${isCurrent ? '(أنت)' : ''}</td>
+                    <td>${player.count || 0}</td>
+                </tr>`;
+            });
+            rankingBody.innerHTML = rankingHtml;
+
+            // رسالة للمستخدم الحالي
+            if (currentPlayerId) {
+                const currentPlayer = roomData.players[currentPlayerId];
+                if (currentPlayer) {
+                    if (currentPlayerId === winner.id) {
+                        userMessage.innerHTML = '<i class="fas fa-star"></i> مبروك! أنت الفائز في هذا التحدي <i class="fas fa-star"></i>';
+                    } else {
+                        const rank = playersArray.findIndex(p => p.id === currentPlayerId) + 1;
+                        userMessage.innerHTML = `حصلت على المركز ${rank} بعدد ${currentPlayer.count || 0} استغفارات. حاول مرة أخرى!`;
+                    }
+                } else {
+                    userMessage.innerHTML = 'شكراً لمشاركتك في التحدي.';
+                }
+            }
+
+            // إيقاف أي مؤقتات
+            if (countdownInterval) clearInterval(countdownInterval);
+        }
+
         // بدء الاستماع للتغييرات في الغرفة
         function listenToRoom(roomId) {
-            if (roomRef) roomRef.off(); // إلغاء الاستماع السابق
+            if (roomRef) roomRef.off();
             roomRef = database.ref(`rooms/${roomId}`);
             roomRef.on('value', (snapshot) => {
                 const roomData = snapshot.val();
@@ -533,7 +630,6 @@
                     return;
                 }
 
-                // تحديث واجهة المستخدم حسب حالة الغرفة
                 if (roomData.status === 'waiting') {
                     hideAllSections();
                     roomSection.classList.remove('hidden');
@@ -563,18 +659,8 @@
                     }
                 }
                 else if (roomData.status === 'finished') {
-                    hideAllSections();
-                    winnerSection.classList.remove('hidden');
-                    let winner = { name: 'لا يوجد', count: 0 };
-                    if (roomData.players) {
-                        const players = Object.values(roomData.players);
-                        if (players.length) {
-                            winner = players.reduce((max, p) => (p.count > max.count ? p : max), players[0]);
-                        }
-                    }
-                    winnerName.innerText = winner.name;
-                    winnerCount.innerText = winner.count || 0;
-                    if (countdownInterval) clearInterval(countdownInterval);
+                    // عرض شاشة النتيجة المطوّرة
+                    showWinnerScreen(roomData);
                 }
             });
         }
@@ -584,6 +670,7 @@
             const diff = endTime - now;
             if (diff <= 0) {
                 timerDisplay.innerText = '00:00';
+                // إنهاء التحدي تلقائياً (سيتم عن طريق الـ listener)
                 return;
             }
             const mins = Math.floor(diff / 60000);
