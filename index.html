@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحدي الاستغفار | المطوّر ليث عربيات</title>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google Fonts: Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Gun.js (النسخة المستقرة) -->
+    <script src="https://cdn.jsdelivr.net/npm/gun@0.2020.520/gun.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0b3a2e 0%, #1a5a4b 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" opacity="0.1"><path d="M25,50 L50,20 L75,50 L50,80 Z" fill="none" stroke="%23d4af37" stroke-width="1.5"/><circle cx="50" cy="50" r="20" fill="none" stroke="%23d4af37" stroke-width="1"/></svg>');
+            background-size: 100px 100px;
+            pointer-events: none;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 40px;
+            padding: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.2) inset;
+            position: relative;
+            z-index: 2;
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .app-header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #f7e7b4;
+            text-shadow: 0 2px 10px rgba(212, 175, 55, 0.6);
+            letter-spacing: 1px;
+        }
+
+        .app-header h1 i {
+            color: #d4af37;
+            margin: 0 0.5rem;
+        }
+
+        .app-header p {
+            color: #b5d1c9;
+            font-size: 1.1rem;
+            border-top: 1px dashed #d4af37;
+            border-bottom: 1px dashed #d4af37;
+            display: inline-block;
+            padding: 0.3rem 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .developer-tag {
+            font-size: 0.9rem;
+            color: #aac3ba;
+            margin-top: 0.5rem;
+        }
+
+        .developer-tag span {
+            color: #d4af37;
+            font-weight: 700;
+        }
+
+        .section {
+            background: rgba(0, 30, 20, 0.5);
+            border-radius: 30px;
+            padding: 2rem;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            box-shadow: 0 15px 30px -10px black;
+            transition: all 0.3s ease;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #d4af37;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 1rem 1.2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #4a786a;
+            border-radius: 60px;
+            font-size: 1rem;
+            color: #fff;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        input::placeholder {
+            color: #97b7ab;
+        }
+
+        input:focus, select:focus {
+            border-color: #d4af37;
+            box-shadow: 0 0 15px #d4af3740;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #b78c2e, #d4af37);
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 60px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #0b3a2e;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 8px 0 #6b4f1f;
+            width: 100%;
+            border: 1px solid #f5e2a9;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 0 #6b4f1f;
+        }
+
+        .btn-primary:active {
+            transform: translateY(5px);
+            box-shadow: 0 3px 0 #6b4f1f;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid #d4af37;
+            padding: 0.8rem 1.5rem;
+            border-radius: 60px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #d4af37;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+        }
+
+        .btn-secondary:hover {
+            background: #d4af3720;
+        }
+
+        .link-card {
+            background: #0d3329;
+            border-radius: 50px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #d4af37;
+            margin: 1.5rem 0;
+            direction: ltr;
+        }
+
+        .link-card span {
+            color: #f7e7b4;
+            font-size: 1rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .copy-btn {
+            background: none;
+            border: none;
+            color: #d4af37;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .copy-btn:hover {
+            transform: scale(1.1);
+            color: #ffd966;
+        }
+
+        .players-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+        }
+
+        .player-card {
+            background: #1a4e40;
+            border-radius: 60px;
+            padding: 0.8rem 1.5rem;
+            min-width: 130px;
+            text-align: center;
+            border: 1px solid #d4af37;
+            box-shadow: 0 5px 0 #0b2f24;
+            color: #f7f1d9;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .player-card i {
+            color: #d4af37;
+        }
+
+        .player-card .count-badge {
+            background: #d4af37;
+            color: #0b3a2e;
+            border-radius: 40px;
+            padding: 0.2rem 0.8rem;
+            font-size: 0.9rem;
+            margin-right: 0.5rem;
+        }
+
+        .timer-box {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .timer {
+            font-size: 5rem;
+            font-weight: 800;
+            color: #f7e7b4;
+            text-shadow: 0 0 15px #d4af37;
+            line-height: 1;
+        }
+
+        .timer-label {
+            color: #b5d1c9;
+            font-size: 1.2rem;
+        }
+
+        .tasbih-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 2rem 0;
+        }
+
+        .tasbih-circle {
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle at 30% 30%, #2a6b58, #104235);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 15px 0 #0b2f24, 0 0 0 4px #d4af37, 0 0 20px #f7e7b4;
+            cursor: pointer;
+            transition: 0.1s;
+            border: 2px solid #f5e2a9;
+            margin-bottom: 1.5rem;
+        }
+
+        .tasbih-circle:active {
+            transform: scale(0.95);
+            box-shadow: 0 8px 0 #0b2f24, 0 0 0 4px #d4af37;
+        }
+
+        .tasbih-counter {
+            font-size: 4rem;
+            font-weight: 800;
+            color: #f7e7b4;
+            text-shadow: 0 0 20px #ffd966;
+            background: rgba(0, 0, 0, 0.5);
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #d4af37;
+        }
+
+        .tasbih-text {
+            font-size: 1.5rem;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .winner-box {
+            background: #1a5a4b;
+            border-radius: 60px;
+            padding: 2.5rem;
+            text-align: center;
+            border: 3px solid #d4af37;
+            margin-top: 1.5rem;
+        }
+
+        .winner-name {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #f7e7b4;
+            text-shadow: 0 0 20px gold;
+        }
+
+        .winner-trophy {
+            font-size: 4rem;
+            color: #d4af37;
+            margin-bottom: 1rem;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: #97b7ab;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+            .timer {
+                font-size: 3rem;
+            }
+            .tasbih-circle {
+                width: 200px;
+                height: 200px;
+            }
+            .tasbih-counter {
+                width: 110px;
+                height: 110px;
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="appContainer">
+        <div class="app-header">
+            <h1><i class="fas fa-mosque"></i> تحدي الاستغفار <i class="fas fa-star-and-crescent"></i></h1>
+            <p>غرفة تنافس في ذكر الله</p>
+            <div class="developer-tag">بتقنية <span>المطوّر ليث عربيات</span> <i class="fas fa-code"></i></div>
+        </div>
+
+        <!-- قسم إنشاء الغرفة / الانضمام -->
+        <div id="joinCreateSection" class="section">
+            <h2 style="color:#f7e7b4; margin-bottom:1.5rem; text-align:center;"><i class="fas fa-door-open"></i> ابدأ التحدي</h2>
+            <div class="form-group">
+                <label><i class="fas fa-user"></i> اسمك</label>
+                <input type="text" id="playerNameInput" placeholder="أدخل اسمك" value="">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-users"></i> عدد المشاركين (بما فيك)</label>
+                <select id="maxPlayersSelect">
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4" selected>4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                </select>
+            </div>
+            <button class="btn-primary" id="createRoomBtn"><i class="fas fa-plus-circle"></i> إنشاء غرفة جديدة</button>
+            <div style="text-align:center; margin: 1rem 0; color:#aac3ba;">أو</div>
+            <div class="form-group">
+                <label><i class="fas fa-link"></i> رابط الغرفة (إذا كان لديك)</label>
+                <input type="text" id="roomLinkInput" placeholder="الصق الرابط هنا">
+            </div>
+            <button class="btn-secondary" id="joinRoomBtn"><i class="fas fa-sign-in-alt"></i> انضم للغرفة</button>
+        </div>
+
+        <!-- قسم الغرفة (انتظار) -->
+        <div id="roomSection" class="section hidden">
+            <h2 style="color:#f7e7b4; margin-bottom:1rem;"><i class="fas fa-door-open"></i> الغرفة: <span id="roomIdDisplay"></span></h2>
+            <div class="link-card">
+                <span id="roomLinkDisplay"></span>
+                <button class="copy-btn" id="copyLinkBtn"><i class="fas fa-copy"></i></button>
+            </div>
+            <div id="waitingMessage" style="color:#b5d1c9; text-align:center; margin:0.5rem 0;">
+                <i class="fas fa-spinner fa-pulse"></i> في انتظار المشاركين...
+            </div>
+            <h3 style="color:#d4af37;">المشاركين:</h3>
+            <div class="players-list" id="playersList"></div>
+            <button class="btn-primary" id="startChallengeBtn" style="margin-top:1.5rem;"><i class="fas fa-play"></i> بدء التحدي (15 دقيقة)</button>
+        </div>
+
+        <!-- قسم التحدي -->
+        <div id="challengeSection" class="section hidden">
+            <div class="timer-box">
+                <div class="timer" id="timerDisplay">15:00</div>
+                <div class="timer-label">الوقت المتبقي</div>
+            </div>
+            <div class="players-list" id="challengePlayersList"></div>
+            <div class="tasbih-container">
+                <div class="tasbih-circle" id="tasbihButton">
+                    <div class="tasbih-counter" id="myCounter">0</div>
+                </div>
+                <div class="tasbih-text">اضغط للتسبيح</div>
+            </div>
+        </div>
+
+        <!-- قسم النتيجة -->
+        <div id="winnerSection" class="section hidden">
+            <div class="winner-box">
+                <div class="winner-trophy"><i class="fas fa-crown"></i></div>
+                <h2 style="color:#f7e7b4;">الفائز في التحدي</h2>
+                <div class="winner-name" id="winnerName">---</div>
+                <p style="color:#b5d1c9; margin-top:1rem;">بعدد استغفارات <span id="winnerCount">0</span></p>
+                <button class="btn-secondary" id="newChallengeBtn" style="margin-top:2rem;"><i class="fas fa-redo-alt"></i> تحدٍ جديد</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            <i class="fas fa-regular fa-heart" style="color:#d4af37;"></i> سبحان الله وبحمده ، سبحان الله العظيم
+        </div>
+    </div>
+
+    <script>
+        // ================== تهيئة Gun ==================
+        const gun = Gun({ 
+            peers: ['https://gun-manhattan.herokuapp.com/gun'] // خادم ترحيل عام
+        });
+
+        // ================== عناصر DOM ==================
+        const joinCreateSection = document.getElementById('joinCreateSection');
+        const roomSection = document.getElementById('roomSection');
+        const challengeSection = document.getElementById('challengeSection');
+        const winnerSection = document.getElementById('winnerSection');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const maxPlayersSelect = document.getElementById('maxPlayersSelect');
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const roomLinkInput = document.getElementById('roomLinkInput');
+        const roomIdDisplay = document.getElementById('roomIdDisplay');
+        const roomLinkDisplay = document.getElementById('roomLinkDisplay');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        const playersList = document.getElementById('playersList');
+        const startChallengeBtn = document.getElementById('startChallengeBtn');
+        const challengePlayersList = document.getElementById('challengePlayersList');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const tasbihButton = document.getElementById('tasbihButton');
+        const myCounter = document.getElementById('myCounter');
+        const winnerName = document.getElementById('winnerName');
+        const winnerCount = document.getElementById('winnerCount');
+        const newChallengeBtn = document.getElementById('newChallengeBtn');
+
+        // ================== متغيرات الحالة ==================
+        let currentRoomId = null;
+        let currentPlayerId = null;
+        let currentPlayerName = null;
+        let roomNode = null;         // عقدة Gun للغرفة الحالية
+        let unsubscribe = null;      // دالة إلغاء الاستماع
+        let countdownInterval = null;
+
+        // ================== دوال مساعدة ==================
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+        }
+
+        function hideAllSections() {
+            joinCreateSection.classList.add('hidden');
+            roomSection.classList.add('hidden');
+            challengeSection.classList.add('hidden');
+            winnerSection.classList.add('hidden');
+        }
+
+        function renderPlayers(players, withCount = false) {
+            if (!players) return '';
+            // تحويل الكائن إلى مصفوفة وترتيب حسب الاسم
+            const entries = Object.entries(players).map(([id, p]) => ({ id, ...p }));
+            entries.sort((a,b) => a.name.localeCompare(b.name));
+            return entries.map(p => `
+                <div class="player-card">
+                    <i class="fas fa-user-astronaut"></i> ${p.name}
+                    ${withCount ? `<span class="count-badge">${p.count || 0}</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // تحديث عداد الوقت
+        function updateTimer(endTime) {
+            const now = Date.now();
+            const diff = endTime - now;
+            if (diff <= 0) {
+                timerDisplay.innerText = '00:00';
+                return;
+            }
+            const mins = Math.floor(diff / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            timerDisplay.innerText = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+        }
+
+        // بدء الاستماع لغرفة معينة
+        function listenToRoom(roomId) {
+            if (unsubscribe) unsubscribe(); // إلغاء الاستماع السابق
+            
+            roomNode = gun.get('rooms').get(roomId);
+            
+            // الاستماع للتغييرات
+            const onData = (data, key) => {
+                if (!data) return; // لا توجد غرفة
+                
+                // التأكد من وجود players ككائن
+                if (!data.players) data.players = {};
+
+                // تحديث واجهة المستخدم حسب حالة الغرفة
+                if (data.status === 'waiting') {
+                    hideAllSections();
+                    roomSection.classList.remove('hidden');
+                    playersList.innerHTML = renderPlayers(data.players, false);
+                    roomIdDisplay.innerText = roomId;
+                    const link = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+                    roomLinkDisplay.innerText = link;
+
+                    // تمكين زر البدء للمضيف إذا اكتمل العدد
+                    if (data.hostId === currentPlayerId && Object.keys(data.players).length >= data.maxPlayers) {
+                        startChallengeBtn.disabled = false;
+                    } else {
+                        startChallengeBtn.disabled = true;
+                    }
+                }
+                else if (data.status === 'started') {
+                    hideAllSections();
+                    challengeSection.classList.remove('hidden');
+                    challengePlayersList.innerHTML = renderPlayers(data.players, true);
+                    if (currentPlayerId && data.players[currentPlayerId]) {
+                        myCounter.innerText = data.players[currentPlayerId].count || 0;
+                    }
+
+                    if (data.startTime) {
+                        const endTime = data.startTime + 15 * 60 * 1000;
+                        updateTimer(endTime);
+                        if (countdownInterval) clearInterval(countdownInterval);
+                        countdownInterval = setInterval(() => updateTimer(endTime), 500);
+                    }
+                }
+                else if (data.status === 'finished') {
+                    hideAllSections();
+                    winnerSection.classList.remove('hidden');
+                    let winner = { name: 'لا يوجد', count: 0 };
+                    if (data.players) {
+                        const players = Object.values(data.players);
+                        if (players.length) {
+                            winner = players.reduce((max, p) => (p.count > max.count ? p : max), players[0]);
+                        }
+                    }
+                    winnerName.innerText = winner.name;
+                    winnerCount.innerText = winner.count || 0;
+                    if (countdownInterval) clearInterval(countdownInterval);
+                }
+            };
+
+            roomNode.on(onData);
+            // حفظ دالة الإلغاء (Gun لا توفر off مباشرة، نستخدم unbind)
+            unsubscribe = () => roomNode.off();
+        }
+
+        // العودة للشاشة الرئيسية
+        function resetToJoinScreen() {
+            if (unsubscribe) unsubscribe();
+            if (countdownInterval) clearInterval(countdownInterval);
+            currentRoomId = null;
+            currentPlayerId = null;
+            hideAllSections();
+            joinCreateSection.classList.remove('hidden');
+        }
+
+        // ================== الأحداث ==================
+        createRoomBtn.addEventListener('click', async () => {
+            const playerName = playerNameInput.value.trim();
+            if (!playerName) return alert('الرجاء إدخال اسمك');
+            const maxPlayers = parseInt(maxPlayersSelect.value, 10);
+            const roomId = generateId().slice(0, 8).toUpperCase();
+            const playerId = generateId() + '_' + Date.now();
+
+            const roomData = {
+                hostId: playerId,
+                hostName: playerName,
+                maxPlayers,
+                status: 'waiting',
+                startTime: null,
+                players: {
+                    [playerId]: { name: playerName, count: 0 }
+                },
+                createdAt: Date.now()
+            };
+
+            // حفظ الغرفة في Gun
+            gun.get('rooms').get(roomId).put(roomData);
+
+            currentRoomId = roomId;
+            currentPlayerId = playerId;
+            currentPlayerName = playerName;
+            listenToRoom(roomId);
+        });
+
+        joinRoomBtn.addEventListener('click', async () => {
+            let link = roomLinkInput.value.trim();
+            if (!link) return alert('أدخل رابط الغرفة');
+            let roomId = null;
+            try {
+                const url = new URL(link);
+                roomId = url.searchParams.get('room');
+            } catch (e) {
+                roomId = link; // إذا كان مجرد كود
+            }
+            if (!roomId) return alert('لم نتمكن من العثور على معرف الغرفة');
+
+            const playerName = playerNameInput.value.trim();
+            if (!playerName) return alert('الرجاء إدخال اسمك');
+
+            // جلب الغرفة من Gun
+            gun.get('rooms').get(roomId).once((data) => {
+                if (!data) return alert('الغرفة غير موجودة');
+                if (data.status !== 'waiting') return alert('التحدي بدأ بالفعل أو انتهى');
+                if (Object.keys(data.players).length >= data.maxPlayers) return alert('الغرفة ممتلئة');
+
+                const playerId = generateId() + '_' + Date.now();
+                data.players[playerId] = { name: playerName, count: 0 };
+
+                // تحديث الغرفة
+                gun.get('rooms').get(roomId).put({ players: data.players });
+
+                currentRoomId = roomId;
+                currentPlayerId = playerId;
+                currentPlayerName = playerName;
+                listenToRoom(roomId);
+            });
+        });
+
+        copyLinkBtn.addEventListener('click', () => {
+            if (roomLinkDisplay.innerText) {
+                navigator.clipboard.writeText(roomLinkDisplay.innerText).then(() => alert('تم نسخ الرابط'));
+            }
+        });
+
+        startChallengeBtn.addEventListener('click', () => {
+            if (!currentRoomId || !currentPlayerId) return;
+            gun.get('rooms').get(currentRoomId).once((data) => {
+                if (!data || data.hostId !== currentPlayerId) return alert('أنت لست مضيف الغرفة');
+                if (Object.keys(data.players).length < data.maxPlayers) return alert('لم يكتمل العدد بعد');
+                gun.get('rooms').get(currentRoomId).put({
+                    status: 'started',
+                    startTime: Date.now()
+                });
+            });
+        });
+
+        tasbihButton.addEventListener('click', () => {
+            if (!currentRoomId || !currentPlayerId) return;
+            // زيادة العداد
+            gun.get('rooms').get(currentRoomId).get('players').get(currentPlayerId).once((player) => {
+                const newCount = (player?.count || 0) + 1;
+                gun.get('rooms').get(currentRoomId).get('players').get(currentPlayerId).put({ count: newCount });
+            });
+        });
+
+        newChallengeBtn.addEventListener('click', resetToJoinScreen);
+
+        // عند تحميل الصفحة، فحص وجود room في الرابط
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            const roomFromUrl = params.get('room');
+            if (roomFromUrl) {
+                roomLinkInput.value = roomFromUrl;
+                alert('تم العثور على غرفة، أدخل اسمك واضغط "انضم للغرفة"');
+            }
+        });
+
+        // تنظيف
+        window.addEventListener('beforeunload', () => {
+            if (unsubscribe) unsubscribe();
+        });
+    </script>
+</body>
+</html>
